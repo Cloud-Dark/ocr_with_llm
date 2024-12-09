@@ -3,10 +3,11 @@
 Proyek ini adalah aplikasi web untuk ekstraksi teks dari file gambar atau PDF menggunakan OCR (Optical Character Recognition) dan integrasi dengan sistem AI untuk menghasilkan respons berdasarkan hasil OCR.
 
 ## Fitur
+![image](https://github.com/user-attachments/assets/327c5e98-5525-47b1-a191-432a16cd8118)
 
 - **Upload File**: Mendukung pengunggahan file gambar (JPEG, PNG) dan dokumen PDF.
 - **OCR**: Ekstraksi teks dari file gambar atau PDF menggunakan `Tesseract.js` untuk gambar dan `pdf-parse` untuk PDF.
-- **Chat AI**: Integrasi dengan API AI untuk menghasilkan respons berdasarkan teks hasil OCR.
+- **Chat AI**: Integrasi dengan API AI untuk menghasilkan respons berdasarkan teks hasil OCR. Hasil respons didukung dengan format Markdown, sehingga tampilannya lebih rapi dan mudah dibaca.
 - **Antarmuka Web**: Antarmuka yang intuitif untuk pratinjau file, hasil OCR, dan chat AI.
 
 ## Teknologi yang Digunakan
