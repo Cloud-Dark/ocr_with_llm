@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <title>OCR dan AI Chat</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #f4f4f4;
+        }
+        header {
+            background-color: #0078D7;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            width: 100%;
+        }
+        main {
+            padding: 20px;
+            width: 80%;
+        }
+        #ocrBox {
+            display: flex;
+            gap: 20px;
+            justify-content: space-between;
+            align-items: center;
+        }
+        #ocrBox_render, #ocrBox_rawtext {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        #filePreviewArea {
+            border: 1px solid #ccc;
+            padding: 10px;
+            height: 150px;
+            overflow: auto;
+            background-color: #f9f9f9;
+            text-align: center;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+        }
+        #filePreviewArea:hover {
+            background-color: #e0e0e0;
+        }
+        #ocrResult {
+            width: 100%;
+            height: 150px;
+            margin-top: 10px;
+            resize: none;
+        }
+        #processButton {
+            align-self: center;
+        }
+        .chat-container {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .chat-box {
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            padding: 10px;
+            background-color: white;
+        }
+        textarea {
+            width: 100%;
+            height: 100px;
+            margin-top: 10px;
+        }
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #0078D7;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+        .markdown-content table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+        .markdown-content th,
+        .markdown-content td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        .markdown-content th {
+            background-color: #f4f4f4;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>OCR dan AI Chat</h1>
+    </header>
+    <main>
+        <div id="ocrBox">
+            <div id="ocrBox_render">
+                <strong>Pratinjau File:</strong>
+                <div id="filePreviewArea">Tidak ada pratinjau file.</div>
+            </div>
+            <button id="processButton">Proses</button>
+            <div id="ocrBox_rawtext">
+                <strong>Hasil OCR:</strong>
+                <textarea id="ocrResult" readonly></textarea>
+            </div>
+        </div>
+
+        <div class="chat-container">
+            <div class="chat-box">
+                <strong>Chat AI:</strong>
+                <textarea id="chatInput" placeholder="Tulis pesan..."></textarea>
+                <button id="sendChat">Kirim</button>
+                <div id="chatResponse" class="markdown-content"></div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const fileInput = document.createElement('input');
+        fileInput.type = 'file';
+        fileInput.accept = 'image/*,.pdf';
+        fileInput.id = 'fileInput';
+
+        const filePreviewArea = document.getElementById('filePreviewArea');
+        const processButton = document.getElementById('processButton');
+        const ocrResult = document.getElementById('ocrResult');
+        const chatInput = document.getElementById('chatInput');
+        const chatResponse = document.getElementById('chatResponse');
+        const sendChatButton = document.getElementById('sendChat');
+
+        let lastUploadedFile = null; // Simpan file terakhir yang diunggah
+
+        // Klik pada area pratinjau file untuk membuka dialog unggahan file
+        filePreviewArea.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        // Pratinjau file setelah dipilih
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            lastUploadedFile = file;
+            if (file) {
+                filePreviewArea.innerHTML = '';
+
+                if (file.type.startsWith('image/')) {
+                    const img = document.createElement('img');
+                    img.src = URL.createObjectURL(file);
+                    img.style.maxWidth = '100%';
+                    img.style.maxHeight = '100%';
+                    filePreviewArea.appendChild(img);
+                } else if (file.type === 'application/pdf') {
+                    const embed = document.createElement('embed');
+                    embed.src = URL.createObjectURL(file);
+                    embed.style.width = '100%';
+                    embed.style.height = '100%';
+                    filePreviewArea.appendChild(embed);
+                } else {
+                    filePreviewArea.textContent = 'Pratinjau tidak tersedia untuk format file ini.';
+                }
+            }
+        });
+
+        // Fungsi untuk memproses OCR
+        processButton.addEventListener('click', async () => {
+            if (!lastUploadedFile) {
+                alert('Harap unggah file terlebih dahulu.');
+                return;
+            }
+
+            // Tampilkan animasi loading
+            filePreviewArea.innerHTML = '<div class="loader"></div>';
+
+            const formData = new FormData();
+            formData.append('file', lastUploadedFile);
+
+            try {
+                const response = await fetch('/api/ocr', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    ocrResult.value = data.text;
+                    // Tampilkan ulang pratinjau file
+                    fileInput.dispatchEvent(new Event('change'));
+                } else {
+                    alert('Gagal memproses file: ' + (data.message || 'Unknown error'));
+                    fileInput.dispatchEvent(new Event('change'));
+                }
+            } catch (err) {
+                console.error('Error:', err);
+                alert('Terjadi kesalahan saat memproses file.');
+                fileInput.dispatchEvent(new Event('change'));
+            }
+        });
+
+        // Fungsi untuk mengirim pesan ke AI
+        sendChatButton.addEventListener('click', async () => {
+            const prompt = chatInput.value;
+            const ocr = ocrResult.value;
+
+            if (!prompt || !ocr) {
+                alert('Prompt atau hasil OCR tidak boleh kosong.');
+                return;
+            }
+
+            // Tampilkan animasi loading di respons chat
+            chatResponse.innerHTML = '<div class="loader"></div>';
+
+            try {
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt, ocr })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    chatResponse.innerHTML = marked.parse(data.response);
+                } else {
+                    chatResponse.innerText = 'Gagal mendapatkan respons AI.';
+                }
+            } catch (err) {
+                chatResponse.innerText = 'Terjadi kesalahan.';
+                console.error('Error:', err);
+            }
+        });
+    </script>
+</body>
+</html>
